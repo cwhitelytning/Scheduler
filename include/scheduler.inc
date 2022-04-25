@@ -58,9 +58,12 @@ stock explodeTime(const string[], separator = ':', shift = 0, size = sizeof stri
 stock splitTime(const string[], const format[], separator = ':', size = sizeof string)
 {
   new shift = 0
-  if (contain(format, "%H") == -1) shift++
-  if (contain(format, "%M") == -1) shift++
-  if (contain(format, "%S") == -1) shift++
+  if (contain(format, "%H") == -1) {
+    shift++
+
+    if (contain(format, "%M") == -1) shift++
+    if (contain(format, "%S") == -1) shift++
+  }
   return explodeTime(string, separator, shift, size)
 }
 

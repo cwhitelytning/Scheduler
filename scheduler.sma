@@ -9,7 +9,7 @@
 
 #define PLUGIN "Time Scheduler"
 #define AUTHOR "Clay Whitelytning"
-#define VERSION "1.6.1"
+#define VERSION "1.6.2"
 
 #define TIME_FORMAT_SIZE 9
 
