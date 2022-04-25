@@ -1,7 +1,7 @@
 /**
  * @author Clay Whitelytning
  * @link https://github.com/cwhitelytning/Scheduler
- * @description Supports only version 1.8.3 and higher
+ * @description Supports only version 1.8.2 and higher
  */
 #include <amxmodx>
 #include <cellarray>
@@ -9,7 +9,7 @@
 
 #define PLUGIN "Time Scheduler"
 #define AUTHOR "Clay Whitelytning"
-#define VERSION "1.6"
+#define VERSION "1.6.1"
 
 #define TIME_FORMAT_SIZE 9
 
@@ -28,8 +28,10 @@ enum _:Command {
 
 new Array:tasks
 new Array:commands
-new delay // After how many seconds to check and complete tasks? (Pointer on the CVar value)
 new selectedTaskIndex = -1
+
+new delay // After how many seconds to check and complete tasks? (Pointer on the CVar value)
+new cleanup // Cleanup mode for completed tasks (Pointer on the CVar value)
 
 public plugin_init() 
 {
@@ -40,7 +42,9 @@ public plugin_init()
 
   tasks = ArrayCreate(Task)
   commands = ArrayCreate(Command)
+
   delay = register_cvar("scheduler_delay", "1.0")
+  cleanup = register_cvar("scheduler_cleanup", "1")
 
   plugin_unpause()
 }
@@ -148,15 +152,17 @@ public add_command()
 
 /**
  * Reads and executes a list of commands
- * @param integer id
+ * @param integer taskid
+ * @noreturn
  */
-executeCommands(id)
+executeCommands(taskid)
 {
   new size = ArraySize(commands)
   for(new index = 0; index < size; ++index) {
     new command[Command]
     ArrayGetArray(commands, index, command)
-    if (command[__taskid] == id) {
+
+    if (command[__taskid] == taskid) {
       server_cmd(command[__srvcmd])
     }
   }
@@ -167,33 +173,35 @@ executeCommands(id)
  */
 public check_time()
 {
-  new tasksize = ArraySize(tasks)
-  for (new taskIndex = 0; taskIndex < tasksize; ++taskIndex) {    
+  new taskSize = ArraySize(tasks)
+  for (new taskIndex = 0; taskIndex < taskSize; ++taskIndex) {
+    // Protecting a task from being executed while editing    
     if (selectedTaskIndex == taskIndex) continue
 
     new task[Task]
     ArrayGetArray(tasks, taskIndex, task)
 
     if (!task[__completed]) {     
-      new timenow[TIME_FORMAT_SIZE + 1] // time now
-      get_time(task[__format], timenow, charsmax(timenow))
+      new stringNow[TIME_FORMAT_SIZE + 1]
+      get_time(task[__format], stringNow, charsmax(stringNow))
       
-      new now = getSecondsTime(splitTime(timenow, task[__format]))
-      new bool:execute = now == task[__initial]
-      if (!execute && task[__duration]) {
-        new secondsLeft = task[__initial] + task[__duration]
-        if (secondsLeft >= SECONDS_IN_DAY) {
+      new secondsNow = getSecondsTime(splitTime(stringNow, task[__format]))
+      new bool:isPerform = secondsNow == task[__initial]
+      if (!isPerform && task[__duration]) {
+        new endSeconds = task[__initial] + task[__duration]
+        if (endSeconds >= SECONDS_IN_DAY) {
           // Can the task begin?
-          execute = now > task[__initial]
-          // Moved on to the next day
-          if (!execute) execute = SECONDS_IN_DAY + now < secondsLeft
+          if (!(isPerform = secondsNow > task[__initial])) {
+            // Moved on to the next day
+            isPerform = SECONDS_IN_DAY + secondsNow < endSeconds
+          }
         } else {
           // Task will be completed within one day
-          execute = task[__initial] < now < secondsLeft
+          isPerform = task[__initial] < secondsNow < endSeconds
         }
       }
 
-      if (execute) {
+      if (isPerform) {
         executeCommands(taskIndex)
 
         // Flag "a" - do not mark the task as completed
@@ -201,7 +209,36 @@ public check_time()
           task[__completed] = true
           ArraySetArray(tasks, taskIndex, task)	
         }
-      }              
+      }
+    }
+  }
+
+  if (get_pcvar_bool(cleanup)) remove_completed_tasks()
+}
+
+/**
+ * Deletes all completed tasks
+ * @noreturn
+ */
+remove_completed_tasks()
+{
+  new taskIndex = ArraySize(tasks)
+  while(taskIndex--) {
+    new task[Task]
+    ArrayGetArray(tasks, taskIndex, task)
+
+    if (task[__completed]) {
+      new commandIndex = ArraySize(commands)
+      while(commandIndex--) {
+        new command[Command]
+        ArrayGetArray(commands, commandIndex, command)
+
+        if (command[__taskid] == taskIndex) {
+          ArrayDeleteItem(tasks, commandIndex)
+        }
+      }
+
+      ArrayDeleteItem(tasks, taskIndex)
     }
   }
 }

@@ -1,5 +1,9 @@
 #include <time>
 
+/**
+ * Returns the numeric code of the first character from a string
+ * @return integer
+ */
 stock ord(const string[])
 {
     static chars[2]
