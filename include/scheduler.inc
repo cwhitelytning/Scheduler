@@ -1,5 +1,7 @@
 #include <time>
 
+// string_stocks.inc
+
 /**
  * Returns the numeric code of the first character from a string
  * @return integer
@@ -10,6 +12,8 @@ stock ord(const string[])
     chars[0] = string[0]
     return isdigit(chars[0]) ? str_to_num(chars) : -1; 
 }
+
+// scheduler.inc
 
 /**
  * Converts time chunks (hours, minutes, seconds) to seconds
@@ -22,24 +26,22 @@ stock getSecondsTime(const chunks[])
 }
 
 /**
- * Explode time by separator
+ * Explode date or time
  * @param string string
- * @param char separator
  * @param integer shift
  * @param integer size
  * @return integer[]
  */
-stock explodeTime(const string[], separator = ':', shift = 0, size = sizeof string)
+stock explodeDateTime(const string[], shift = 0, size = sizeof string)
 {
   new chunks[3]
 
   for(new symbol = 0; symbol < size; ++symbol) {
-    
     if (sizeof chunks > shift) {
-      if (string[symbol] == separator) {
-        shift++
-      } else if (isdigit(string[symbol])) {
+      if (isdigit(string[symbol])) {
         chunks[shift] = chunks[shift] * 10 + ord(string[symbol])
+      } else {
+        shift++
       }
     } else
       break
@@ -52,10 +54,9 @@ stock explodeTime(const string[], separator = ':', shift = 0, size = sizeof stri
  * Defines the time components used by the format and splits them into chunks
  * @param string string
  * @param string format
- * @param char separator
  * @param integer size
  */
-stock splitTime(const string[], const format[], separator = ':', size = sizeof string)
+stock splitTime(const string[], const format[], size = sizeof string)
 {
   new shift = 0
   if (contain(format, "%H") == -1) {
@@ -64,7 +65,7 @@ stock splitTime(const string[], const format[], separator = ':', size = sizeof s
     if (contain(format, "%M") == -1) shift++
     if (contain(format, "%S") == -1) shift++
   }
-  return explodeTime(string, separator, shift, size)
+  return explodeDateTime(string, shift, size)
 }
 
 /**

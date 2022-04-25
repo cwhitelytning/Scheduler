@@ -9,7 +9,7 @@
 
 #define PLUGIN "Time Scheduler"
 #define AUTHOR "Clay Whitelytning"
-#define VERSION "1.6.2"
+#define VERSION "1.6.3"
 
 #define TIME_FORMAT_SIZE 9
 
@@ -44,7 +44,7 @@ public plugin_init()
   commands = ArrayCreate(Command)
 
   delay = register_cvar("scheduler_delay", "1.0")
-  cleanup = register_cvar("scheduler_cleanup", "1")
+  cleanup = register_cvar("scheduler_cleanup_completed_tasks", "1")
 
   plugin_unpause()
 }
@@ -101,7 +101,7 @@ public new_task()
     // -------------------------------------------------------
     new endtime[TIME_FORMAT_SIZE + 1]
     read_argv(4, endtime, charsmax(endtime))
-    task[__duration] = getSecondsTime(explodeTime(endtime))
+    task[__duration] = getSecondsTime(splitTime(endtime, task[__format]))
     
     // Calculate task continuation time from its end point
     if (containi(task[__flags], "b") != -1) {
@@ -169,12 +169,30 @@ executeCommands(taskid)
 }
 
 /**
+ * Deletes all commands of the specified task ID
+ * @param integer taskid
+ * @noreturn
+ */
+removeCommands(taskid)
+{
+  new index = ArraySize(commands)
+  while(index--) {
+    new command[Command]
+    ArrayGetArray(commands, index, command)
+
+    if (command[__taskid] == taskid) {
+      ArrayDeleteItem(commands, index)
+    }
+  }
+}
+
+/**
  * Checks tasks and submits them for execution
  */
 public check_time()
 {
-  new taskSize = ArraySize(tasks)
-  for (new taskIndex = 0; taskIndex < taskSize; ++taskIndex) {
+  new taskIndex = ArraySize(tasks)
+  while(taskIndex--) {
     // Protecting a task from being executed while editing    
     if (selectedTaskIndex == taskIndex) continue
 
@@ -211,33 +229,10 @@ public check_time()
         }
       }
     }
-  }
 
-  if (get_pcvar_bool(cleanup)) remove_completed_tasks()
-}
-
-/**
- * Deletes all completed tasks
- * @noreturn
- */
-remove_completed_tasks()
-{
-  new taskIndex = ArraySize(tasks)
-  while(taskIndex--) {
-    new task[Task]
-    ArrayGetArray(tasks, taskIndex, task)
-
-    if (task[__completed]) {
-      new commandIndex = ArraySize(commands)
-      while(commandIndex--) {
-        new command[Command]
-        ArrayGetArray(commands, commandIndex, command)
-
-        if (command[__taskid] == taskIndex) {
-          ArrayDeleteItem(tasks, commandIndex)
-        }
-      }
-
+    // Remove a completed task
+    if (task[__completed] && get_pcvar_bool(cleanup)) {
+      removeCommands(taskIndex)
       ArrayDeleteItem(tasks, taskIndex)
     }
   }
