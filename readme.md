@@ -11,22 +11,19 @@
 * Create a **scheduler.cfg** file in the **configs** section
 * Register the compiled plugin in the **plugins.ini** file (move its name to the very end)
 
-## Featues
+## Features
 
 * The implementation is based on tasks that can be created using commands in the configuration file or the server console.
-* Each task has a completion status. This attribute allows you to exclude the repetition of the task on the map.
 * It does not need to connect additional modules for data storage.
-* Since the plugin does not save completed tasks after changing the map, the completion status is reset.
 * Allows you to customize the format of the specified time by combining time components.
 * Has no limits on the number of tasks created and commands added to them (except for memory).
-* User-friendly source code allows you to extend plugin features without any difficulty.
-* Automatic cleaning of completed tasks.
+* User-friendly source code allows you to extend plugin functionality without any difficulty.
+* Deleting a task and its commands after completion.
 * Able to work with transitions for the next day.
 * Flexible setting of task time and duration:
-  * Set only the initial execution time.
-  * Set start time and duration.
-  * Set start and end execution.
-
+* Set only the initial execution time.
+* Set start time and duration.
+* Set start and end execution.
 
 ## Commands
 
@@ -45,7 +42,7 @@ Creates a new job.
 ##### Flags
 Allows you to add or change the behavior of a particular task.
 
-* **a** - don't add task completion mark.
+* **a** - do not delete the task and its commands after execution.
 * **b** - Calculates duration based on two timestamps.
 
 ##### Format
@@ -53,15 +50,15 @@ Allows you to add or change the behavior of a particular task.
 Specifies which time components will be used (hours - **%H,** minutes - **%M**, seconds - **%S**).
 
 * If multiple temporary components are used, they must be separated by a colon.
-* Start time and duration must use the same number of components as per the format.
+* Start time and duration must use the same number of components according to the format.
 
 ##### Start time and duration
 
-Sets the trigger time and duration of the task.
+Sets the trigger time and duration of the job.
 
-* The time must match the format being set.
+* The time must match the given format.
 
-#### Unselect task
+#### Deselect task
 
 ```c
 scheduler_unselect_task
@@ -88,12 +85,6 @@ scheduler_check_delay 1.0
 Specifies the interval for checking and executing tasks in seconds.
 
 * Minimum value **0.1**.
-
-```c
-scheduler_cleanup_completed_tasks 1 (0 - off, 1 - on)
-```
-
-Deletes the task and its commands if the job has been completed.
 
 ## Examples
 

@@ -9,7 +9,7 @@
 
 #define PLUGIN "Time Scheduler"
 #define AUTHOR "Clay Whitelytning"
-#define VERSION "1.6.3"
+#define VERSION "1.6.4"
 
 #define TIME_FORMAT_SIZE 9
 
@@ -17,8 +17,7 @@ enum _:Task {
   __format[TIME_FORMAT_SIZE + 1], // %H:%M:%S
   __initial,
   __duration,
-  __flags[3],
-  bool:__completed
+  __flags[3]
 }
 
 enum _:Command {
@@ -31,7 +30,6 @@ new Array:commands
 new selectedTaskIndex = -1
 
 new delay // After how many seconds to check and complete tasks? (Pointer on the CVar value)
-new cleanup // Cleanup mode for completed tasks (Pointer on the CVar value)
 
 public plugin_init() 
 {
@@ -44,7 +42,6 @@ public plugin_init()
   commands = ArrayCreate(Command)
 
   delay = register_cvar("scheduler_delay", "1.0")
-  cleanup = register_cvar("scheduler_cleanup_completed_tasks", "1")
 
   plugin_unpause()
 }
@@ -199,41 +196,33 @@ public check_time()
     new task[Task]
     ArrayGetArray(tasks, taskIndex, task)
 
-    if (!task[__completed]) {     
-      new stringNow[TIME_FORMAT_SIZE + 1]
-      get_time(task[__format], stringNow, charsmax(stringNow))
-      
-      new secondsNow = getSecondsTime(splitTime(stringNow, task[__format]))
-      new bool:isPerform = secondsNow == task[__initial]
-      if (!isPerform && task[__duration]) {
-        new endSeconds = task[__initial] + task[__duration]
-        if (endSeconds >= SECONDS_IN_DAY) {
-          // Can the task begin?
-          if (!(isPerform = secondsNow > task[__initial])) {
-            // Moved on to the next day
-            isPerform = SECONDS_IN_DAY + secondsNow < endSeconds
-          }
-        } else {
-          // Task will be completed within one day
-          isPerform = task[__initial] < secondsNow < endSeconds
+    new stringNow[TIME_FORMAT_SIZE + 1]
+    get_time(task[__format], stringNow, charsmax(stringNow))
+    
+    new secondsNow = getSecondsTime(splitTime(stringNow, task[__format]))
+    new bool:isPerform = secondsNow == task[__initial]
+    if (!isPerform && task[__duration]) {
+      new endSeconds = task[__initial] + task[__duration]
+      if (endSeconds >= SECONDS_IN_DAY) {
+        // Can the task begin?
+        if (!(isPerform = secondsNow > task[__initial])) {
+          // Moved on to the next day
+          isPerform = SECONDS_IN_DAY + secondsNow < endSeconds
         }
-      }
-
-      if (isPerform) {
-        executeCommands(taskIndex)
-
-        // Flag "a" - do not mark the task as completed
-        if (contain(task[__flags], "a") == -1) {
-          task[__completed] = true
-          ArraySetArray(tasks, taskIndex, task)	
-        }
+      } else {
+        // Task will be completed within one day
+        isPerform = task[__initial] < secondsNow < endSeconds
       }
     }
 
-    // Remove a completed task
-    if (task[__completed] && get_pcvar_bool(cleanup)) {
-      removeCommands(taskIndex)
-      ArrayDeleteItem(tasks, taskIndex)
+    if (isPerform) {
+      executeCommands(taskIndex)
+
+      // Flag "a" - remove a completed task
+      if (contain(task[__flags], "a") == -1) {
+        removeCommands(taskIndex)
+        ArrayDeleteItem(tasks, taskIndex)
+      }
     }
   }
 }
