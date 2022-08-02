@@ -42,7 +42,6 @@ Creates a new job.
 Allows you to add or change the behavior of a particular task.
 
 * **a** - do not delete the task and its commands after execution.
-* **b** - Calculates duration based on two timestamps.
 
 ##### Format
 
