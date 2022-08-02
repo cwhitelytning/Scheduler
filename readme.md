@@ -22,7 +22,6 @@
 * Able to work with transitions for the next day.
 * Flexible setting of task time and duration:
 * Set only the initial execution time.
-* Set start time and duration.
 * Set start and end execution.
 
 ## Commands
@@ -89,26 +88,14 @@ Specifies the interval for checking and executing tasks in seconds.
 ## Examples
 
 ```c
-// As soon as the seconds of the current time are equal to 10 seconds
-scheduler_new_task "" "%S" "10"
-
-// Execute the task continuously, every time the seconds of the current time equals 10 seconds
-scheduler_new_task "a" "%S" "10"
- 
-// As soon as the minutes and seconds match the current time
-scheduler_new_task "" "%M:%S" "30:00"
- 
-// As soon as the hours, minutes and seconds match the current time
-scheduler_new_task "" "%H:%M:%S" "18:00:00"
-
 // The task will be executed every time the map changes, as long as the current time is within the time range
-scheduler_new_task "d" "%H:%M" "18:00" "08:00"
+scheduler_new_task "" "%H:%M" "18:00" "08:00"
  
 // The task will run continuously as long as the current time is within the task's range
-scheduler_new_task "ad" "%H:%M" "18:00" "08:00"
+scheduler_new_task "a" "%H:%M" "18:00" "08:00"
 
 // Working example of a task
-scheduler_new_task "ad" "%H" "18" "08"
+scheduler_new_task "a" "%H" "18" "08"
 scheduler_add_command "mp_startmoney" "850"
 scheduler_add_command "sv_restartround" "1"
 scheduler_unselect_task

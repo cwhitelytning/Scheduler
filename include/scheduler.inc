@@ -8,8 +8,8 @@
  */
 stock ord(const string[])
 {
-    static chars[2]
-    chars[0] = string[0]
+    static chars[2];
+    chars[0] = string[0];
     return isdigit(chars[0]) ? str_to_num(chars) : -1; 
 }
 
@@ -20,9 +20,9 @@ stock ord(const string[])
  * @param integer[] chunks
  * @return integer
  */
-stock getSecondsTime(const chunks[]) 
+stock time_duration(const chunks[]) 
 {
-  return chunks[0] * SECONDS_IN_HOUR + chunks[1] * SECONDS_IN_MINUTE + chunks[2]
+  return chunks[0] * SECONDS_IN_HOUR + chunks[1] * SECONDS_IN_MINUTE + chunks[2];
 }
 
 /**
@@ -32,22 +32,22 @@ stock getSecondsTime(const chunks[])
  * @param integer size
  * @return integer[]
  */
-stock explodeDateTime(const string[], shift = 0, size = sizeof string)
+stock explode_datetime(const string[], shift = 0, size = sizeof string)
 {
-  new chunks[3]
+  new chunks[3];
 
   for(new symbol = 0; symbol < size; ++symbol) {
     if (sizeof chunks > shift) {
       if (isdigit(string[symbol])) {
-        chunks[shift] = chunks[shift] * 10 + ord(string[symbol])
+        chunks[shift] = chunks[shift] * 10 + ord(string[symbol]);
       } else {
-        shift++
+        shift++;
       }
     } else
-      break
+      break;
   }
 
-  return chunks
+  return chunks;
 }
 
 /**
@@ -56,16 +56,16 @@ stock explodeDateTime(const string[], shift = 0, size = sizeof string)
  * @param string format
  * @param integer size
  */
-stock splitTime(const string[], const format[], size = sizeof string)
+stock explode_time(const string[], const format[], size = sizeof string)
 {
-  new shift = 0
+  new shift = 0;
   if (contain(format, "%H") == -1) {
-    shift++
+    shift++;
 
-    if (contain(format, "%M") == -1) shift++
-    if (contain(format, "%S") == -1) shift++
+    if (contain(format, "%M") == -1) shift++;
+    if (contain(format, "%S") == -1) shift++;
   }
-  return explodeDateTime(string, shift, size)
+  return explode_datetime(string, shift, size);
 }
 
 /**
@@ -73,14 +73,26 @@ stock splitTime(const string[], const format[], size = sizeof string)
  * @param integer seconds
  * @return integer[]
  */
-stock getTimeSeconds(seconds) 
+stock time_from_duration(seconds) 
 {
-  new chunks[3]
+  new chunks[3];
     
-  chunks[0] = seconds / SECONDS_IN_HOUR
-  chunks[2] = seconds - (chunks[0] * SECONDS_IN_HOUR)
-  chunks[1] = chunks[2] / SECONDS_IN_MINUTE
-  chunks[2] -= chunks[1] * SECONDS_IN_MINUTE 
+  chunks[0] = seconds / SECONDS_IN_HOUR;
+  chunks[2] = seconds - (chunks[0] * SECONDS_IN_HOUR);
+  chunks[1] = chunks[2] / SECONDS_IN_MINUTE;
+  chunks[2] -= chunks[1] * SECONDS_IN_MINUTE;
   
-  return chunks
+  return chunks;
+}
+
+/**
+ * Checks whether the time point is within the time.
+ * @param integer start
+ * @param integer time
+ * @param integer end
+ * @return bool
+ */
+stock within_time_duration(start, time, end)
+{
+  return start > end ? start <= time || time < end : start <= time && time < end;
 }

@@ -1,15 +1,18 @@
+#pragma semicolon 1
+
 /**
  * @author Clay Whitelytning
  * @link https://github.com/cwhitelytning/Scheduler
  * @description Supports only version 1.8.2 and higher
  */
+
 #include <amxmodx>
 #include <cellarray>
 #include <scheduler>
 
 #define PLUGIN "Time Scheduler"
 #define AUTHOR "Clay Whitelytning"
-#define VERSION "1.6.4"
+#define VERSION "1.7.0"
 
 #define TIME_FORMAT_SIZE 9
 
@@ -25,52 +28,51 @@ enum _:Command {
   __srvcmd[127]
 }
 
-new Array:tasks
-new Array:commands
-new selectedTaskIndex = -1
+new Array:tasks = Invalid_Array;
+new Array:commands = Invalid_Array;
+new selected_taskid = -1;
 
-new delay // After how many seconds to check and complete tasks? (Pointer on the CVar value)
+new cvar_delay; // After how many seconds to check and complete tasks? (Pointer on the CVar value)
 
 public plugin_init() 
 {
-  register_plugin(PLUGIN, VERSION, AUTHOR)
-  register_srvcmd("scheduler_new_task", "new_task")
-  register_srvcmd("scheduler_unselect_task", "unselect_task")
-  register_srvcmd("scheduler_add_command", "add_command")
+  register_plugin(PLUGIN, VERSION, AUTHOR);
+  register_srvcmd("scheduler_new_task", "new_task");
+  register_srvcmd("scheduler_unselect_task", "unselect_task");
+  register_srvcmd("scheduler_add_command", "add_command");
 
-  tasks = ArrayCreate(Task)
-  commands = ArrayCreate(Command)
+  tasks = ArrayCreate(Task);
+  commands = ArrayCreate(Command);
+  cvar_delay = register_cvar("scheduler_delay", "1.0");
 
-  delay = register_cvar("scheduler_delay", "1.0")
-
-  plugin_unpause()
+  plugin_unpause();
 }
 
 public plugin_pause() 
 {
-  remove_task(1)
+  remove_task(1);
 }
 
 public plugin_unpause() 
 {
-  set_task(get_pcvar_float(delay), "check_time", 1, "", 0, "b")
+  set_task(get_pcvar_float(cvar_delay), "check_time", 1, "", 0, "b");
 }
 
 public plugin_cfg() 
 {
-  new configDir[64]
-  get_localinfo("amxx_configsdir", configDir, charsmax(configDir))
+  new config_dirpath[64];
+  get_localinfo("amxx_configsdir", config_dirpath, charsmax(config_dirpath));
 
-  new configFile[128]
-  formatex(configFile, charsmax(configFile), "%s/scheduler.cfg", configDir)
-  if (filesize(configFile) > 0) server_cmd("exec %s", configFile)
+  new config_filepath[128];
+  formatex(config_filepath, charsmax(config_dirpath), "%s/scheduler.cfg", config_dirpath);
+  if (filesize(config_filepath) > 0) server_cmd("exec %s", config_filepath);
 }
 
 #if AMXX_VERSION_NUM < 183
 public plugin_end() 
 {
-  ArrayDestroy(tasks)
-  ArrayDestroy(commands)
+  ArrayDestroy(tasks);
+  ArrayDestroy(commands);
 }
 #endif
 
@@ -80,44 +82,33 @@ public plugin_end()
  */
 public new_task()
 {
-  new argc = read_argc()
+  new argc = read_argc();
   if (argc > 3) {
-    new task[Task]
+    new task[Task];
 
     // -------------------------------------------------------
-    read_argv(1, task[__flags], charsmax(task[__flags]))
-    read_argv(2, task[__format], charsmax(task[__format]))
+    read_argv(1, task[__flags], charsmax(task[__flags]));
+    read_argv(2, task[__format], charsmax(task[__format]));
     
     // Parsing the format and the initial time
     // -------------------------------------------------------
-    new initial[TIME_FORMAT_SIZE + 1]
-    read_argv(3, initial, charsmax(initial))
-    task[__initial] = getSecondsTime(splitTime(initial, task[__format]))
+    new initial[TIME_FORMAT_SIZE + 1];
+    read_argv(3, initial, charsmax(initial));
+    task[__initial] = time_duration(explode_time(initial, task[__format]));
 
     // Parsing duration
     // -------------------------------------------------------
-    new endtime[TIME_FORMAT_SIZE + 1]
-    read_argv(4, endtime, charsmax(endtime))
-    task[__duration] = getSecondsTime(splitTime(endtime, task[__format]))
+    new endtime[TIME_FORMAT_SIZE + 1];
+    read_argv(4, endtime, charsmax(endtime));
+    task[__duration] = time_duration(explode_time(endtime, task[__format]));
     
-    // Calculate task continuation time from its end point
-    if (containi(task[__flags], "b") != -1) {
-      // Task will be completed the next day
-      if (task[__initial] > task[__duration]) {
-        task[__duration] = SECONDS_IN_DAY - task[__initial] + task[__duration]
-      } else {
-        // The time range is within a day
-        task[__duration] -= task[__initial]
-      }
-    }
-
     #if AMXX_VERSION_NUM < 183
-    selectedTaskIndex = ArrayPushArray(tasks, task) ? ArraySize(tasks) - 1 : -1
+    selected_taskid = ArrayPushArray(tasks, task) ? ArraySize(tasks) - 1 : -1;
     #else
-    selectedTaskIndex = ArrayPushArray(tasks, task)
+    selected_taskid = ArrayPushArray(tasks, task);
     #endif
   }
-  return PLUGIN_CONTINUE
+  return PLUGIN_CONTINUE;
 }
 
 /**
@@ -126,8 +117,8 @@ public new_task()
  */
 public unselect_task()
 {
-  selectedTaskIndex = -1
-  return PLUGIN_CONTINUE
+  selected_taskid = -1;
+  return PLUGIN_CONTINUE;
 }
 
 /**
@@ -136,15 +127,15 @@ public unselect_task()
  */
 public add_command()
 {
-  if (selectedTaskIndex != -1 && read_argc() > 1) {
-    new command[Command]
+  if (selected_taskid != -1 && read_argc() > 1) {
+    new command[Command];
 
-    command[__taskid] = selectedTaskIndex
-    read_args(command[__srvcmd], charsmax(command[__srvcmd]))
+    command[__taskid] = selected_taskid;
+    read_args(command[__srvcmd], charsmax(command[__srvcmd]));
 
-    ArrayPushArray(commands, command)
+    ArrayPushArray(commands, command);
   }
-  return PLUGIN_CONTINUE
+  return PLUGIN_CONTINUE;
 }
 
 /**
@@ -152,15 +143,15 @@ public add_command()
  * @param integer taskid
  * @noreturn
  */
-executeCommands(taskid)
+execute_commands(taskid)
 {
-  new size = ArraySize(commands)
+  new size = ArraySize(commands);
   for(new index = 0; index < size; ++index) {
-    new command[Command]
-    ArrayGetArray(commands, index, command)
+    new command[Command];
+    ArrayGetArray(commands, index, command);
 
     if (command[__taskid] == taskid) {
-      server_cmd(command[__srvcmd])
+      server_cmd(command[__srvcmd]);
     }
   }
 }
@@ -170,15 +161,15 @@ executeCommands(taskid)
  * @param integer taskid
  * @noreturn
  */
-removeCommands(taskid)
+remove_commands(taskid)
 {
-  new index = ArraySize(commands)
+  new index = ArraySize(commands);
   while(index--) {
-    new command[Command]
-    ArrayGetArray(commands, index, command)
+    new command[Command];
+    ArrayGetArray(commands, index, command);
 
     if (command[__taskid] == taskid) {
-      ArrayDeleteItem(commands, index)
+      ArrayDeleteItem(commands, index);
     }
   }
 }
@@ -188,40 +179,30 @@ removeCommands(taskid)
  */
 public check_time()
 {
-  new taskIndex = ArraySize(tasks)
-  while(taskIndex--) {
+  new index = ArraySize(tasks);
+  while(index--) {
     // Protecting a task from being executed while editing    
-    if (selectedTaskIndex == taskIndex) continue
+    if (selected_taskid == index) continue;
 
-    new task[Task]
-    ArrayGetArray(tasks, taskIndex, task)
+    new task[Task];
+    ArrayGetArray(tasks, index, task);
 
-    new stringNow[TIME_FORMAT_SIZE + 1]
-    get_time(task[__format], stringNow, charsmax(stringNow))
+    new time_as_string[TIME_FORMAT_SIZE + 1];
+    get_time(task[__format], time_as_string, charsmax(time_as_string));
     
-    new secondsNow = getSecondsTime(splitTime(stringNow, task[__format]))
-    new bool:isPerform = secondsNow == task[__initial]
-    if (!isPerform && task[__duration]) {
-      new endSeconds = task[__initial] + task[__duration]
-      if (endSeconds >= SECONDS_IN_DAY) {
-        // Can the task begin?
-        if (!(isPerform = secondsNow > task[__initial])) {
-          // Moved on to the next day
-          isPerform = SECONDS_IN_DAY + secondsNow < endSeconds
-        }
-      } else {
-        // Task will be completed within one day
-        isPerform = task[__initial] < secondsNow < endSeconds
-      }
+    new duration = time_duration(explode_time(time_as_string, task[__format]));
+    new is_executed = duration == task[__initial];
+    if (task[__duration] && !is_executed) {
+      is_executed = within_time_duration(task[__initial], duration, task[__duration]);
     }
 
-    if (isPerform) {
-      executeCommands(taskIndex)
+    if (is_executed) {
+      execute_commands(index);
 
       // Flag "a" - remove a completed task
       if (contain(task[__flags], "a") == -1) {
-        removeCommands(taskIndex)
-        ArrayDeleteItem(tasks, taskIndex)
+        remove_commands(index);
+        ArrayDeleteItem(tasks, index);
       }
     }
   }
