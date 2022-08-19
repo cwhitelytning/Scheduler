@@ -12,7 +12,7 @@
 
 #define PLUGIN "Time Scheduler"
 #define AUTHOR "Clay Whitelytning"
-#define VERSION "1.7.0"
+#define VERSION "1.7.1"
 
 #define TIME_FORMAT_SIZE 9
 
@@ -45,6 +45,11 @@ public plugin_init()
   commands = ArrayCreate(Command);
   cvar_delay = register_cvar("scheduler_delay", "1.0");
 
+  new filepath[128];
+  get_localinfo("amxx_configsdir", filepath, charsmax(filepath));
+  formatex(filepath, charsmax(filepath), "%s/%s", filepath, "scheduler.cfg");
+  server_cmd("exec %s", filepath);
+
   plugin_unpause();
 }
 
@@ -56,16 +61,6 @@ public plugin_pause()
 public plugin_unpause() 
 {
   set_task(get_pcvar_float(cvar_delay), "check_time", 1, "", 0, "b");
-}
-
-public plugin_cfg() 
-{
-  new config_dirpath[64];
-  get_localinfo("amxx_configsdir", config_dirpath, charsmax(config_dirpath));
-
-  new config_filepath[128];
-  formatex(config_filepath, charsmax(config_dirpath), "%s/scheduler.cfg", config_dirpath);
-  if (filesize(config_filepath) > 0) server_cmd("exec %s", config_filepath);
 }
 
 #if AMXX_VERSION_NUM < 183
