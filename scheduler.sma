@@ -1,26 +1,21 @@
 #pragma semicolon 1
 
-/**
- * @author Clay Whitelytning
- * @link https://github.com/cwhitelytning/Scheduler
- * @description Supports only version 1.8.2 and higher
- */
-
 #include <amxmodx>
 #include <cellarray>
 #include <scheduler>
 
-#define PLUGIN "Time Scheduler"
 #define AUTHOR "Clay Whitelytning"
-#define VERSION "1.7.1"
+#define PLUGIN "Scheduler"
+#define VERSION "2.0.0"
 
-#define TIME_FORMAT_SIZE 9
+#define DEFAULT_TASKID 1
+#define FILENAME_SIZE 128
+#define DATETIME_STRING_SIZE 31
 
 enum _:Task {
-  __format[TIME_FORMAT_SIZE + 1], // %H:%M:%S
-  __initial,
-  __duration,
-  __flags[3]
+  __format[18],       //!< %Y/%m/%d-%H:%M:%S
+  __begin,            //!< datetime duration
+  __end               //!< datetime duration
 }
 
 enum _:Command {
@@ -30,37 +25,55 @@ enum _:Command {
 
 new Array:tasks = Invalid_Array;
 new Array:commands = Invalid_Array;
-new selected_taskid = -1;
 
-new cvar_delay; // After how many seconds to check and complete tasks? (Pointer on the CVar value)
+new selected_id = -1,
+    cvar_check_task_delay,
+    cvar_remove_task_after_executed;
 
-public plugin_init() 
+register_cvars()
+{
+  cvar_check_task_delay = register_cvar("scheduler_delay", "1.0");
+  cvar_remove_task_after_executed = register_cvar("scheduler_remove_task_after_executed", "1");
+}
+
+register_commands()
+{
+  register_srvcmd("scheduler_new_task", "@srvcmd_new_task");
+  register_srvcmd("scheduler_select_task", "@srvcmd_select_task");
+  register_srvcmd("scheduler_unselect_task", "@srvcmd_unselect_task");
+  register_srvcmd("scheduler_add_command", "@srvcmd_add_command");
+  register_srvcmd("scheduler_remove_command", "@srvcmd_remove_command");
+}
+
+load_configuration()
+{
+  new filename[FILENAME_SIZE];
+  get_localinfo("amxx_configsdir", filename, charsmax(filename));
+  formatex(filename, charsmax(filename), "%s/%s", filename, "scheduler.cfg");
+  server_cmd("exec %s", filename);
+}
+
+public plugin_init()
 {
   register_plugin(PLUGIN, VERSION, AUTHOR);
-  register_srvcmd("scheduler_new_task", "new_task");
-  register_srvcmd("scheduler_unselect_task", "unselect_task");
-  register_srvcmd("scheduler_add_command", "add_command");
+  register_commands();
+  register_cvars();
 
   tasks = ArrayCreate(Task);
   commands = ArrayCreate(Command);
-  cvar_delay = register_cvar("scheduler_delay", "1.0");
 
-  new filepath[128];
-  get_localinfo("amxx_configsdir", filepath, charsmax(filepath));
-  formatex(filepath, charsmax(filepath), "%s/%s", filepath, "scheduler.cfg");
-  server_cmd("exec %s", filepath);
-
+  load_configuration();
   plugin_unpause();
 }
 
-public plugin_pause() 
+public plugin_pause()
 {
-  remove_task(1);
+  remove_task(DEFAULT_TASKID);
 }
 
-public plugin_unpause() 
+public plugin_unpause()
 {
-  set_task(get_pcvar_float(cvar_delay), "check_time", 1, "", 0, "b");
+  set_task(get_pcvar_float(cvar_check_task_delay), "@check_time", DEFAULT_TASKID, .flags = "b");
 }
 
 #if AMXX_VERSION_NUM < 183
@@ -71,74 +84,94 @@ public plugin_end()
 }
 #endif
 
-/**
- * Creates a new task
- * @return integer
- */
-public new_task()
+#if AMXX_VERSION_NUM < 183
+read_argv_int(id)
+{
+  new buffer[11]; // 2 147 483 647
+  read_argv(id, buffer, charsmax(buffer));
+  return str_to_num(buffer); // Doesn't check if error returns 0
+}
+#endif
+
+@srvcmd_select_task()
+{
+  if (read_argc() == 2) {
+    new id = read_argv_int(1);
+    if (ArraySize(tasks) > id) {
+      selected_id = id;
+    } else
+      log_amx("Error when selecting task, invalid task id %d", id);
+
+  } else
+    server_print("Please use syntax: <id>");
+}
+
+@srvcmd_unselect_task()
+{
+  selected_id = -1;
+}
+
+@srvcmd_new_task()
 {
   new argc = read_argc();
-  if (argc > 3) {
+  if (argc > 2) {
     new task[Task];
+    read_argv(1, task[__format], charsmax(task[__format]));
 
-    // -------------------------------------------------------
-    read_argv(1, task[__flags], charsmax(task[__flags]));
-    read_argv(2, task[__format], charsmax(task[__format]));
-    
-    // Parsing the format and the initial time
-    // -------------------------------------------------------
-    new initial[TIME_FORMAT_SIZE + 1];
-    read_argv(3, initial, charsmax(initial));
-    task[__initial] = time_duration(explode_time(initial, task[__format]));
+    new begin[DATETIME_STRING_SIZE];
+    read_argv(2, begin, charsmax(begin));
+    task[__begin] = parse_datetime(begin, task[__format]);
 
-    // Parsing duration
-    // -------------------------------------------------------
-    new endtime[TIME_FORMAT_SIZE + 1];
-    read_argv(4, endtime, charsmax(endtime));
-    task[__duration] = time_duration(explode_time(endtime, task[__format]));
-    
+    if (argc > 3) {
+      new end[DATETIME_STRING_SIZE];
+      read_argv(3, end, charsmax(end));
+      task[__end] = parse_datetime(end, task[__format]);
+    }
+
     #if AMXX_VERSION_NUM < 183
-    selected_taskid = ArrayPushArray(tasks, task) ? ArraySize(tasks) - 1 : -1;
+    selected_id = ArrayPushArray(tasks, task) ? ArraySize(tasks) - 1 : -1;
     #else
-    selected_taskid = ArrayPushArray(tasks, task);
+    selected_id = ArrayPushArray(tasks, task);
     #endif
-  }
-  return PLUGIN_CONTINUE;
+
+  } else 
+    server_print("Please use syntax: <format> <time> [<end>]");
 }
 
-/**
- * Removes from editing mode
- * @return integer
- */
-public unselect_task()
+@srvcmd_add_command()
 {
-  selected_taskid = -1;
-  return PLUGIN_CONTINUE;
+  if (selected_id > -1) {
+    if (read_argc() > 1) {
+      new command[Command];
+
+      command[__taskid] = selected_id;
+      read_args(command[__srvcmd], charsmax(command[__srvcmd]));
+      
+      ArrayPushArray(commands, command);
+    } else
+      server_print("Please use syntax: <command> [<args>]");
+
+  } else
+    log_amx("Error when adding command, task not selected");
 }
 
 /**
- * Adds commands to the selected task
- * @return integer
+ * Deleting a command by index.
  */
-public add_command()
+@srvcmd_remove_command()
 {
-  if (selected_taskid != -1 && read_argc() > 1) {
-    new command[Command];
+  if (selected_id > -1) {
+    if (read_argc() == 2) {
+      new index = read_argv_int(1);
+      ArrayDeleteItem(commands, index);
+    } else
+      server_print("Please use syntax: <id>");
 
-    command[__taskid] = selected_taskid;
-    read_args(command[__srvcmd], charsmax(command[__srvcmd]));
-
-    ArrayPushArray(commands, command);
-  }
-  return PLUGIN_CONTINUE;
+  } else
+    log_amx("Error when deleting command, task not selected");
 }
 
-/**
- * Reads and executes a list of commands
- * @param integer taskid
- * @noreturn
- */
-execute_commands(taskid)
+@execute_commands(taskid)
 {
   new size = ArraySize(commands);
   for(new index = 0; index < size; ++index) {
@@ -151,12 +184,7 @@ execute_commands(taskid)
   }
 }
 
-/**
- * Deletes all commands of the specified task ID
- * @param integer taskid
- * @noreturn
- */
-remove_commands(taskid)
+@remove_all_commands(taskid)
 {
   new index = ArraySize(commands);
   while(index--) {
@@ -169,36 +197,33 @@ remove_commands(taskid)
   }
 }
 
-/**
- * Checks tasks and submits them for execution
- */
-public check_time()
+@remove_task(index)
+{
+  if (ArraySize(tasks) > index) {
+    @remove_all_commands(index);
+    ArrayDeleteItem(tasks, index);    
+  }
+}
+
+@remove_all_tasks()
 {
   new index = ArraySize(tasks);
-  while(index--) {
-    // Protecting a task from being executed while editing    
-    if (selected_taskid == index) continue;
+  while(index--) @remove_task(index);
+}
+
+@check_time()
+{
+  new index = ArraySize(tasks);
+  while(index--) {  
+    if (selected_id == index) continue; // Protecting a task from being executed while editing
 
     new task[Task];
     ArrayGetArray(tasks, index, task);
-
-    new time_as_string[TIME_FORMAT_SIZE + 1];
-    get_time(task[__format], time_as_string, charsmax(time_as_string));
     
-    new duration = time_duration(explode_time(time_as_string, task[__format]));
-    new is_executed = duration == task[__initial];
-    if (task[__duration] && !is_executed) {
-      is_executed = within_time_duration(task[__initial], duration, task[__duration]);
-    }
-
-    if (is_executed) {
-      execute_commands(index);
-
-      // Flag "a" - remove a completed task
-      if (contain(task[__flags], "a") == -1) {
-        remove_commands(index);
-        ArrayDeleteItem(tasks, index);
-      }
+    new duration = get_now_duration_ex(task[__format]);
+    if (duration == task[__begin] || (task[__end] && within_time_duration(task[__begin], duration, task[__end]))) {
+      @execute_commands(index);
+      if (get_pcvar_bool(cvar_remove_task_after_executed)) @remove_task(index);
     }
   }
 }

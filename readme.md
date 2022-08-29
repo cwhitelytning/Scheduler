@@ -29,7 +29,7 @@
 #### New task
 
 ```c
-scheduler_new_task "flags" "format" "start time" ["duration"]
+scheduler_new_task "format" "start time" ["duration"]
 ```
 
 Creates a new job.
@@ -37,11 +37,6 @@ Creates a new job.
 * Each new job goes into edit mode to add commands.
 * While the task is in edit mode, it is not available for execution.
 * Only one task can be in edit mode.
-
-##### Flags
-Allows you to add or change the behavior of a particular task.
-
-* **a** - do not delete the task and its commands after execution.
 
 ##### Format
 
@@ -84,17 +79,20 @@ Specifies the interval for checking and executing tasks in seconds.
 
 * Minimum value **0.1**.
 
+```c
+scheduler_remove_task_after_executed true
+```
+
+* Delete a task after completion (**true** or **false**).
+
 ## Examples
 
 ```c
 // The task will be executed every time the map changes, as long as the current time is within the time range
-scheduler_new_task "" "%H:%M" "18:00" "08:00"
- 
-// The task will run continuously as long as the current time is within the task's range
-scheduler_new_task "a" "%H:%M" "18:00" "08:00"
+scheduler_new_task "%H:%M" "18:00" "08:00"
 
 // Working example of a task
-scheduler_new_task "a" "%H" "18" "08"
+scheduler_new_task %H" "18" "08"
 scheduler_add_command "mp_startmoney" "850"
 scheduler_add_command "sv_restartround" "1"
 scheduler_unselect_task
