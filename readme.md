@@ -40,7 +40,7 @@ Creates a new job.
 
 ##### Format
 
-Specifies which time components will be used (hours - **%H,** minutes - **%M**, seconds - **%S**).
+Specifies which time components will be used (year - **%Y**, month - **%m**, day - **%d**, hours - **%H,** minutes - **%M**, seconds - **%S**).
 
 * If multiple temporary components are used, they must be separated by a colon.
 * Start time and duration must use the same number of components according to the format.
@@ -50,6 +50,14 @@ Specifies which time components will be used (hours - **%H,** minutes - **%M**, 
 Sets the trigger time and duration of the job.
 
 * The time must match the given format.
+
+#### Select task
+
+```c
+scheduler_select_task "id"
+```
+
+Allows you to select a task to add or remove commands.
 
 #### Deselect task
 
@@ -69,6 +77,14 @@ Adds a new command.
 
 * Command length is limited by the value set in the source. By default it is 127 characters.
 
+#### Remove all tasks
+
+```c
+scheduler_remove_all_tasks
+```
+
+Deletes all tasks.
+
 ## CVars
 
 ```c
@@ -84,6 +100,12 @@ scheduler_remove_task_after_executed true
 ```
 
 * Delete a task after completion (**true** or **false**).
+
+```c
+scheduler_debug true
+```
+
+* Enable the output of special messages in the log (**true** or **false**).
 
 ## Examples
 

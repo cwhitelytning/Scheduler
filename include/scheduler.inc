@@ -15,8 +15,20 @@ stock char_to_digit(const string[])
 
 // sheduler.inc
 
+#if !defined HOURS_IN_DAY
+#define HOURS_IN_DAY 24
+#endif
+
 #if !defined MONTHS_IN_YEAR
 #define MONTHS_IN_YEAR 12
+#endif
+
+#if !defined DAYS_IN_LEAP_YEAR
+#define DAYS_IN_LEAP_YEAR 366
+#endif
+
+#if !defined DAYS_IN_YEAR
+#define DAYS_IN_YEAR 365
 #endif
 
 #if !defined INITIAL_DATE_YEAR
@@ -33,6 +45,9 @@ stock char_to_digit(const string[])
 
 #define is_leap_year(%1) !(%1 % 4) || !(%1 % 100) || !(%1 % 400)
 #define DATETIME_SIZE 7
+
+new const DAYS_ON_MONTHS[] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
+new const DAYS_ON_MONTHS_IN_LEAP_YEAR[] = { 0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
 
 /**
  * Returns the day of the week from date.
@@ -51,28 +66,16 @@ stock get_day_of_week_from_date(year, const month, const day)
 }
 
 /**
- * Returns the number of days.
- * @param   int   index
- * @param   leap  is it a leap year?
+ * Returns the number of days until the specified month.
+ * @param   int end   up to which month to sum the days?
+ * @param   int leap  it's a leap year?
  * @return  int
  */
-stock get_days_in_month(index, leap = false)
-{
-  static const days[] = { 0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 };
-  return leap && index == 2 ? 29 /* if leap year */ : days[index];
-}
-
-/**
- * Returns the number of days in a year.
- * @param   int year    it's a leap year?
- * @param   int month   up to which month to sum the days?
- * @return  int
- */
-stock get_days_in_year(const year, const month = MONTHS_IN_YEAR)
+stock get_count_days_until_month(const end = MONTHS_IN_YEAR, const leap = false)
 {
   new count = 0;
-  for(new index = 1; index <= month; ++index) {
-    count += get_days_in_month(index, is_leap_year(year));
+  for(new index = 1; index <= end; ++index) {
+    count += leap ? DAYS_ON_MONTHS_IN_LEAP_YEAR[index] : DAYS_ON_MONTHS[index];
   }
   return count;
 }
@@ -82,14 +85,13 @@ stock get_days_in_year(const year, const month = MONTHS_IN_YEAR)
  * @param   int year  until what year do you count?
  * @return  int
  */
-stock get_days_elapsed_until_year(const year)
+stock get_days_elapsed_until_year(year)
 {
-  if (INITIAL_DATE_YEAR < year) {
-    new const elapsed = year - INITIAL_DATE_YEAR; // how many years have elapsed (total)
-    new const leaps = elapsed / 4; // how many leap years were there
-    return leaps * 366 + (elapsed - leaps) * 365;
+  new days = 0;
+  while(year-- > INITIAL_DATE_YEAR) {
+    days += is_leap_year(year) ? DAYS_IN_LEAP_YEAR : DAYS_IN_YEAR;
   }
-  return 0;
+  return days;
 }
 
 /**
@@ -142,7 +144,7 @@ stock get_year_duration(const year)
  */
 stock get_month_duration(const year, const month)
 {
-  return get_days_in_year(year, month) * SECONDS_IN_DAY;
+  return get_count_days_until_month(month, is_leap_year(year)) * SECONDS_IN_DAY;
 }
 
 /**
@@ -283,19 +285,67 @@ stock get_utc_duration()
 }
 
 /**
- * Converts seconds to hours, minutes, and seconds and returns an array of time chunks
- * @param int duration
+ * Converts duration to days, hours, minutes and seconds.
+ * @param int seconds
+ * @param int days
  * @param int hours
  * @param int minutes
- * @param int seconds
  * @noreturn
  */
-stock time_from_duration(duration, &hours = 0, &minutes = 0, &seconds = 0) 
+stock time_from_duration(&seconds, &days = 0, &hours = 0, &minutes = 0) 
 {    
-  hours = duration / SECONDS_IN_HOUR;
-  seconds = duration - hours * SECONDS_IN_HOUR;
-  minutes = seconds / SECONDS_IN_MINUTE;
-  seconds -= minutes * SECONDS_IN_MINUTE;
+  if (seconds >= SECONDS_IN_MINUTE) {
+    minutes = seconds / SECONDS_IN_MINUTE;
+    seconds -= minutes * SECONDS_IN_MINUTE;
+  }
+
+  if (minutes >= SECONDS_IN_MINUTE) {
+    hours = minutes / SECONDS_IN_MINUTE;
+    minutes -= hours * SECONDS_IN_MINUTE;
+  }
+
+  if (hours >= HOURS_IN_DAY) {
+    days = hours / HOURS_IN_DAY;
+    hours -= days * HOURS_IN_DAY;
+  }
+}
+
+/**
+ * Converts duration to day, hours, minutes and seconds.
+ * @param int days
+ * @param int year
+ * @param int month
+ */
+stock date_from_duration(&days, &year = 0, &month = 0)
+{
+  year = INITIAL_DATE_YEAR;
+  if (days >= DAYS_IN_YEAR) {
+    new const passed = days / DAYS_IN_YEAR;
+    year += passed;
+    days -= get_days_elapsed_until_year(year);
+  }
+
+  for(; month < MONTHS_IN_YEAR + 1; ++month) {
+    new const count = is_leap_year(year) ? DAYS_ON_MONTHS_IN_LEAP_YEAR[month] : DAYS_ON_MONTHS[month];
+    if (days > count) days -= count; else break;
+  }
+  
+  days++;
+}
+
+/**
+ * Converts duration to year, month, day, hours, minutes and seconds.
+ * @param int seconds
+ * @param int year
+ * @param int month
+ * @param int days
+ * @param int hours
+ * @param int minutes
+ */
+stock datetime_from_duration(&seconds, &year = 0, &month = 0, &days = 0, &hours = 0, &minutes = 0)
+{
+  time_from_duration(seconds, days, hours, minutes);
+  date_from_duration(days, year, month);
 }
 
 /**

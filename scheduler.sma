@@ -6,9 +6,10 @@
 
 #define AUTHOR "Clay Whitelytning"
 #define PLUGIN "Scheduler"
-#define VERSION "2.0.0"
+#define VERSION "2.0.1"
 
 #define DEFAULT_TASKID 1
+#define COMMAND_SIZE 128
 #define FILENAME_SIZE 128
 #define DATETIME_STRING_SIZE 31
 
@@ -20,29 +21,31 @@ enum _:Task {
 
 enum _:Command {
   __taskid,
-  __srvcmd[127]
+  __srvcmd[COMMAND_SIZE]
 }
 
 new Array:tasks = Invalid_Array;
 new Array:commands = Invalid_Array;
 
 new selected_id = -1,
+    cvar_debug,
     cvar_check_task_delay,
     cvar_remove_task_after_executed;
 
 register_cvars()
 {
-  cvar_check_task_delay = register_cvar("scheduler_delay", "1.0");
+  cvar_debug = register_cvar("scheduler_debug", "0");
+  cvar_check_task_delay = register_cvar("scheduler_check_delay", "1.0");
   cvar_remove_task_after_executed = register_cvar("scheduler_remove_task_after_executed", "1");
 }
 
 register_commands()
 {
-  register_srvcmd("scheduler_new_task", "@srvcmd_new_task");
-  register_srvcmd("scheduler_select_task", "@srvcmd_select_task");
-  register_srvcmd("scheduler_unselect_task", "@srvcmd_unselect_task");
-  register_srvcmd("scheduler_add_command", "@srvcmd_add_command");
-  register_srvcmd("scheduler_remove_command", "@srvcmd_remove_command");
+  register_srvcmd("scheduler_new_task", "@new_task");
+  register_srvcmd("scheduler_select_task", "@select_task");
+  register_srvcmd("scheduler_unselect_task", "@unselect_task");
+  register_srvcmd("scheduler_add_command", "@add_command");
+  register_srvcmd("scheduler_remove_all_tasks", "@remove_all_tasks");
 }
 
 load_configuration()
@@ -93,25 +96,24 @@ read_argv_int(id)
 }
 #endif
 
-@srvcmd_select_task()
+@select_task()
 {
   if (read_argc() == 2) {
     new id = read_argv_int(1);
     if (ArraySize(tasks) > id) {
       selected_id = id;
-    } else
-      log_amx("Error when selecting task, invalid task id %d", id);
-
-  } else
-    server_print("Please use syntax: <id>");
+    } else if (get_pcvar_bool(cvar_debug)) {
+      log_amx("Error when selecting a task, invalid task id %d", id);
+    }
+  }
 }
 
-@srvcmd_unselect_task()
+@unselect_task()
 {
   selected_id = -1;
 }
 
-@srvcmd_new_task()
+@new_task()
 {
   new argc = read_argc();
   if (argc > 2) {
@@ -128,47 +130,28 @@ read_argv_int(id)
       task[__end] = parse_datetime(end, task[__format]);
     }
 
+    // -------------------------------------------------------
     #if AMXX_VERSION_NUM < 183
     selected_id = ArrayPushArray(tasks, task) ? ArraySize(tasks) - 1 : -1;
     #else
     selected_id = ArrayPushArray(tasks, task);
     #endif
-
-  } else 
-    server_print("Please use syntax: <format> <time> [<end>]");
+  }
 }
 
-@srvcmd_add_command()
+@add_command()
 {
   if (selected_id > -1) {
     if (read_argc() > 1) {
       new command[Command];
-
       command[__taskid] = selected_id;
+
       read_args(command[__srvcmd], charsmax(command[__srvcmd]));
-      
       ArrayPushArray(commands, command);
-    } else
-      server_print("Please use syntax: <command> [<args>]");
-
-  } else
-    log_amx("Error when adding command, task not selected");
-}
-
-/**
- * Deleting a command by index.
- */
-@srvcmd_remove_command()
-{
-  if (selected_id > -1) {
-    if (read_argc() == 2) {
-      new index = read_argv_int(1);
-      ArrayDeleteItem(commands, index);
-    } else
-      server_print("Please use syntax: <id>");
-
-  } else
-    log_amx("Error when deleting command, task not selected");
+    }
+  } else if (get_pcvar_bool(cvar_debug)) {
+    log_amx("Error when adding a command, the task is not selected");
+  }
 }
 
 @execute_commands(taskid)
@@ -193,6 +176,9 @@ read_argv_int(id)
 
     if (command[__taskid] == taskid) {
       ArrayDeleteItem(commands, index);
+      if (get_pcvar_bool(cvar_debug)) {
+        log_amx("Сommand with index %d in the task with index %d has been deleted", index, taskid);
+      }      
     }
   }
 }
@@ -201,7 +187,11 @@ read_argv_int(id)
 {
   if (ArraySize(tasks) > index) {
     @remove_all_commands(index);
-    ArrayDeleteItem(tasks, index);    
+    ArrayDeleteItem(tasks, index);
+
+    if (get_pcvar_bool(cvar_debug)) {
+      log_amx("Task with index %d has been deleted", index);
+    }
   }
 }
 
@@ -222,6 +212,10 @@ read_argv_int(id)
     
     new duration = get_now_duration_ex(task[__format]);
     if (duration == task[__begin] || (task[__end] && within_time_duration(task[__begin], duration, task[__end]))) {
+      if (get_pcvar_bool(cvar_debug)) {
+        log_amx("Task with an index %d is running", index);
+      }
+
       @execute_commands(index);
       if (get_pcvar_bool(cvar_remove_task_after_executed)) @remove_task(index);
     }
