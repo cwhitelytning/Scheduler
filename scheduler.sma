@@ -210,8 +210,8 @@ read_argv_int(id)
     new task[Task];
     ArrayGetArray(tasks, index, task);
     
-    new duration = get_now_duration_ex(task[__format]);
-    if (duration == task[__begin] || (task[__end] && within_time_duration(task[__begin], duration, task[__end]))) {
+    new duration = get_duration_of_now(task[__format]);
+    if (duration == task[__begin] || (task[__end] && get_duration_of_time(task[__begin], duration, task[__end]))) {
       if (get_pcvar_bool(cvar_debug)) {
         log_amx("Task with an index %d is running", index);
       }

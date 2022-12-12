@@ -66,26 +66,26 @@ stock get_day_of_week_from_date(year, const month, const day)
 }
 
 /**
- * Returns the number of days until the specified month.
- * @param   int end   up to which month to sum the days?
- * @param   int leap  it's a leap year?
- * @return  int
+ * Returns the number of elapsed days until the specified month.
+ * @param   month number in the year up to which you want to count the days (1 - 12 range)
+ * @param   leap Is it a leap year? 
+ * @return  days
  */
-stock get_count_days_until_month(const end = MONTHS_IN_YEAR, const leap = false)
+stock get_elapsed_days_until_month(const month = MONTHS_IN_YEAR, const leap = false)
 {
   new count = 0;
-  for(new index = 1; index <= end; ++index) {
+  for(new index = 1; index <= month; ++index) {
     count += leap ? DAYS_ON_MONTHS_IN_LEAP_YEAR[index] : DAYS_ON_MONTHS[index];
   }
   return count;
 }
 
 /**
- * Returns the number of days elapsed until year.
- * @param   int year  until what year do you count?
- * @return  int
+ * Returns the number of elapsed days until the specified year.
+ * @param   year until which the number of elapsed days will be counted
+ * @return  days
  */
-stock get_days_elapsed_until_year(year)
+stock get_elapsed_days_until_year(year)
 {
   new days = 0;
   while(year-- > INITIAL_DATE_YEAR) {
@@ -96,92 +96,92 @@ stock get_days_elapsed_until_year(year)
 
 /**
  * Returns the duration of the hours.
- * @param   int hours
- * @return  int
+ * @param   hours
+ * @return  duration
  */
-stock get_hours_duration(const hours)
+stock get_duration_of_hours(const hours)
 {
   return hours * SECONDS_IN_HOUR;
 }
 
 /**
  * Returns the duration of the minutes.
- * @param   int minutes
- * @return  int
+ * @param   minutes
+ * @return  duration
  */
-stock get_minutes_duration(const minutes)
+stock get_duration_of_minutes(const minutes)
 {
   return minutes * SECONDS_IN_MINUTE;
 }
 
 /**
  * Converts hours, minutes, seconds to duration.
- * @param   int hours
- * @param   int minutes
- * @param   int seconds
- * @return  int
+ * @param   hours
+ * @param   minutes
+ * @param   seconds
+ * @return  duration
  */
-stock get_time_duration(const hours, const minutes, const seconds)
+stock get_duration_of_time(const hours, const minutes, const seconds)
 {
-  return get_hours_duration(hours) + get_minutes_duration(minutes) + seconds;
+  return get_duration_of_hours(hours) + get_duration_of_minutes(minutes) + seconds;
 }
 
 /**
  * Returns the duration of the year.
- * @param   int year
- * @return  int
+ * @param   year
+ * @return  duration
  */
-stock get_year_duration(const year)
+stock get_duration_of_elapsed_days_until_year(const year)
 {
-  return get_days_elapsed_until_year(year) * SECONDS_IN_DAY;
+  return get_elapsed_days_until_year(year) * SECONDS_IN_DAY;
 }
 
 /**
  * Returns the duration of the month.
- * @param   int year
- * @param   int month
- * @return  int
+ * @param   year
+ * @param   month
+ * @return  duration
  */
-stock get_month_duration(const year, const month)
+stock get_duration_of_elapsed_days_until_month(const year, const month)
 {
-  return get_count_days_until_month(month, is_leap_year(year)) * SECONDS_IN_DAY;
+  return get_elapsed_days_until_month(month, is_leap_year(year)) * SECONDS_IN_DAY;
 }
 
 /**
  * Returns the duration of the days.
- * @param   int day
- * @return  int
+ * @param   days
+ * @return  duration
  */
-stock get_day_duration(const day)
+stock get_duration_of_days(const days)
 {
-  return INITIAL_DATE_DAY < day ? day * SECONDS_IN_DAY : 0;
+  return INITIAL_DATE_DAY < days ? days * SECONDS_IN_DAY : 0;
 }
 
 /**
  * Converts year, month, day to duration.
- * @param   int year
- * @param   int month
- * @param   int day
- * @return  int
+ * @param   year
+ * @param   month
+ * @param   day
+ * @return  duration
  */
-stock get_date_duration(const year, const month, const day)
+stock get_duration_of_date(const year, const month, const day)
 {
-  return get_year_duration(year) + get_month_duration(year, month - 1) + get_day_duration(day - 1);
+  return get_duration_of_elapsed_days_until_year(year) + get_duration_of_elapsed_days_until_month(year, month - 1) + get_duration_of_days(day - 1);
 }
 
 /**
  * Converts year, month, day, hours, minutes, seconds into duration.
- * @param   int year
- * @param   int month
- * @param   int day
- * @param   int hour
- * @param   int minute
- * @param   int second
- * @return  int
+ * @param   year
+ * @param   month
+ * @param   day
+ * @param   hour
+ * @param   minute
+ * @param   second
+ * @return  duration
  */
-stock get_datetime_duration(const year, const month, const day, const hour, const minute, const second)
+stock get_duration_of_datetime(const year, const month, const day, const hour, const minute, const second)
 {
-  return get_date_duration(year, month, day) + get_time_duration(hour, minute, second);
+  return get_duration_of_date(year, month, day) + get_duration_of_time(hour, minute, second);
 }
 
 /**
@@ -216,15 +216,15 @@ stock parse_datetime_format(output[][], const format[])
 
 /**
  * Parses the date and time by format and returns the duration.
- * @param   string  string datetime
- * @param   string  format set of %Y, %m, %d, %H, %M, %S
- * @param   int     year
- * @param   int     month
- * @param   int     day
- * @param   int     hours
- * @param   int     minutes
- * @param   int     seconds
- * @return  int
+ * @param   string
+ * @param   format set of %Y, %m, %d, %H, %M, %S
+ * @param   year
+ * @param   month
+ * @param   day
+ * @param   hours
+ * @param   minutes
+ * @param   seconds
+ * @return  duration
  */
 stock parse_datetime(const string[], const format[], &year = 0, &month = 0, &day = 0, &hours = 0, &minutes = 0, &seconds = 0)
 {
@@ -249,15 +249,15 @@ stock parse_datetime(const string[], const format[], &year = 0, &month = 0, &day
       seconds = datetime[index];
     }
   }
-  return get_datetime_duration(year, month, day, hours, minutes, seconds);
+  return get_duration_of_datetime(year, month, day, hours, minutes, seconds);
 }
 
 /**
  * Returns the duration of the date and time now in the format (with UTC).
- * @param  format string
- * @return int
+ * @param  format
+ * @return duration
  */
-stock get_now_duration_ex(const format[])
+stock get_duration_of_now(const format[])
 {
   new string[31];
   get_time(format, string, charsmax(string)); /* with UTC */
@@ -266,33 +266,42 @@ stock get_now_duration_ex(const format[])
 }
 
 /**
+ * Returns the duration of the time now.
+ * @return duration
+ */
+stock get_duration_of_time_now()
+{
+  return get_duration_of_now("%H:%M:%S");
+}
+
+/**
  * Returns the duration of the date and time now.
  * An analogue of the get_systime function.
- * @return int
+ * @return duration
  */
-stock get_now_duration()
+stock get_duration_of_datetime_now()
 {  
-  return get_now_duration_ex("%Y/%m/%d %H:%M:%S");
+  return get_duration_of_now("%Y/%m/%d %H:%M:%S");
 }
 
 /**
  * Returns UTC in duration.
  * @return int
  */
-stock get_utc_duration()
+stock get_duration_of_utc()
 {
-  return get_now_duration() - get_systime(); // without UTC
+  return get_duration_of_datetime_now() - get_systime(); // without UTC
 }
 
 /**
  * Converts duration to days, hours, minutes and seconds.
- * @param int seconds
- * @param int days
- * @param int hours
- * @param int minutes
+ * @param seconds duration from which days, hours and minutes will be extracted
+ * @param days
+ * @param hours
+ * @param minutes
  * @noreturn
  */
-stock time_from_duration(&seconds, &days = 0, &hours = 0, &minutes = 0) 
+stock get_time_from_duration(&seconds, &days = 0, &hours = 0, &minutes = 0) 
 {    
   if (seconds >= SECONDS_IN_MINUTE) {
     minutes = seconds / SECONDS_IN_MINUTE;
@@ -311,18 +320,18 @@ stock time_from_duration(&seconds, &days = 0, &hours = 0, &minutes = 0)
 }
 
 /**
- * Converts duration to day, hours, minutes and seconds.
- * @param int days
- * @param int year
- * @param int month
+ * Converts duration to days, years and months.
+ * @param days duration of the days from which the year and month will be extracted
+ * @param year
+ * @param month
  */
-stock date_from_duration(&days, &year = 0, &month = 0)
+stock get_date_from_duration(&days, &year = 0, &month = 0)
 {
   year = INITIAL_DATE_YEAR;
   if (days >= DAYS_IN_YEAR) {
     new const passed = days / DAYS_IN_YEAR;
     year += passed;
-    days -= get_days_elapsed_until_year(year);
+    days -= get_elapsed_days_until_year(year);
   }
 
   for(; month < MONTHS_IN_YEAR + 1; ++month) {
@@ -342,31 +351,42 @@ stock date_from_duration(&days, &year = 0, &month = 0)
  * @param int hours
  * @param int minutes
  */
-stock datetime_from_duration(&seconds, &year = 0, &month = 0, &days = 0, &hours = 0, &minutes = 0)
+stock get_datetime_from_duration(&seconds, &year = 0, &month = 0, &days = 0, &hours = 0, &minutes = 0)
 {
-  time_from_duration(seconds, days, hours, minutes);
-  date_from_duration(days, year, month);
+  get_time_from_duration(seconds, days, hours, minutes);
+  get_date_from_duration(days, year, month);
 }
 
 /**
  * Returns UTC in hours.
- * @return int
+ * @return hours
  */
 stock get_utc()
 {
-  new hours = 0, duration = get_utc_duration();
-  time_from_duration(duration, .hours = hours);
+  new hours = 0, duration = get_duration_of_utc();
+  get_time_from_duration(duration, .hours = hours);
   return hours;
 }
 
 /**
  * Checks whether the time point is within the time.
- * @param   int begin
- * @param   int time
- * @param   int end
+ * @param   begin duration
+ * @param   stamp duration
+ * @param   end duration
  * @return  bool
  */
-stock within_time_duration(const begin, const time, const end)
+stock bool:is_in_time_range(const begin, const stamp, const end)
 {
-  return begin > end ? (begin <= time || time < end) : (begin <= time && time < end);
+  return begin > end ? (begin <= stamp || stamp < end) : (begin <= stamp && stamp < end);
+}
+
+/**
+ * Checks if the time is currently in the range.
+ * @param   begin duration
+ * @param   end duration
+ * @return  bool
+ */
+stock bool:is_in_now_time_range(const begin, const end)
+{
+  return is_in_time_range(begin, get_duration_of_time_now(), end);
 }
